@@ -12,8 +12,8 @@
 using namespace cv;
 using namespace std;
 
-#define MAX(x,y) ((x)<=(y)? (y):(x))
-#define MIN(x,y) ((x)<=(y)? (x):(y))
+//#define MAX(x,y) ((x)<=(y)? (y):(x))
+//#define MIN(x,y) ((x)<=(y)? (x):(y))
 
 #define DRK_CH_WND_WT 5 //should be an odd number
 #define DRK_CH_WND_HT 5 //should be an odd number

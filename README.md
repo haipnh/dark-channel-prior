@@ -6,6 +6,6 @@ K. He, J. Sun and X. Tang, "Single Image Haze Removal Using Dark Channel Prior,"
 
 Ported from https://github.com/mshr-h/Image_Dehazing.
 
-But I have simplify the data structure and put all necessary code in only 1 main file.
+I have simplified the data structure and put all necessary code in only 1 main file.
 
 Tested on Ubuntu-18.04, OpenCV-4.4.0.

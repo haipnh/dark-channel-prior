@@ -1,4 +1,4 @@
-
+# modify this to your actual path
 OPENCV_INCLUDE_PATH=/usr/local/opencv-4.2.0/include
 OPENCV_LIB_PATH=/usr/local/opencv-4.2.0/lib
 
@@ -29,4 +29,4 @@ main: $(OBJ)
 .PHONY: clean
 
 clean:
-	rm -f $(ODIR)/*.o *~ main
+	rm -rf $(ODIR) main

@@ -12,8 +12,15 @@
 using namespace cv;
 using namespace std;
 
+#define MAX(x,y) ((x)<=(y)? (y):(x))
+#define MIN(x,y) ((x)<=(y)? (x):(y))
+
 #define DRK_CH_WND_WT 5 //should be an odd number
 #define DRK_CH_WND_HT 5 //should be an odd number
+
+struct pix_t { int w; int h; };
+
+#define DISPLAY 1
 
 int main( int argc, char** argv )
 {
@@ -27,19 +34,37 @@ int main( int argc, char** argv )
         return -1;
     }
 
-    cv::split(image, channels); // split from BGR image to RGB channels
-
     int img_width = image.size().width;
     int img_height = image.size().height;
 
+    cv::split(image, channels); // split from BGR image to RGB channels
+
+/*  Verify pixel's position: OK
+    unsigned char *rowPtr = image.ptr<unsigned char>(0);
+    unsigned char *rowPtrR = channels[0].ptr<unsigned char>(0);
+    unsigned char *rowPtrG = channels[1].ptr<unsigned char>(0);
+    unsigned char *rowPtrB = channels[2].ptr<unsigned char>(0);
+
+    cout << to_string(rowPtr[0]) << " - " << to_string(rowPtrR[0]) << '\n';
+    cout << to_string(rowPtr[1]) << " - " << to_string(rowPtrG[0]) << '\n';
+    cout << to_string(rowPtr[2]) << " - " << to_string(rowPtrB[0]) << '\n';
+
+    cout << to_string(rowPtr[3]) << " - " << to_string(rowPtrR[1]) << '\n';
+    cout << to_string(rowPtr[4]) << " - " << to_string(rowPtrG[1]) << '\n';
+    cout << to_string(rowPtr[5]) << " - " << to_string(rowPtrB[1]) << '\n';
+*/
+
     unsigned char* dark_channel = (unsigned char *)malloc(sizeof(unsigned char)*img_height*img_width);
 
+    int h=0, w=0;
+    int i=0, j=0;
     int min_ri=255, min_gi=255, min_bi=255;
     int lh=0, lw=0;
 
     // calculate dark channel
-    int filter_w = DRK_CH_WND_WT/2;
-    int filter_h = DRK_CH_WND_HT/2;
+    struct pix_t center;
+    center.h = DRK_CH_WND_HT/2;
+    center.w = DRK_CH_WND_WT/2;
 
     for(int h = 0; h < image.rows; h++)
     {
@@ -47,8 +72,8 @@ int main( int argc, char** argv )
         {   min_ri=255;
             min_gi=255;
             min_bi=255;
-            for(lh=-filter_h;lh<=filter_h;lh++){ // -2 -> +2
-                for(lw=-filter_w;lw<=filter_w;lw++){ // -2 -> +2
+            for(lh=-center.h;lh<=center.h;lh++){ // -2 -> +2
+                for(lw=-center.w;lw<=center.w;lw++){ // -2 -> +2
                     if((w+lw)>=0&&(w+lw)<img_width-1&&(h+lh)>=0&&(h+lh)<img_height-1){ // ignore out-of-frame pixels
                         min_ri=MIN(min_ri, channels[0].data[img_width*(h+lh)+(w+lw)]);
                         min_gi=MIN(min_gi, channels[1].data[img_width*(h+lh)+(w+lw)]);
@@ -60,13 +85,114 @@ int main( int argc, char** argv )
         }
     }
 
-    // To do:
+    // pick up the top p% brightest pixels in the dark channel
+    double p=0.1;
+    int max_val=255;
+    int num_of_pix=(int)((img_height)*(img_width)*p)/100;
+    struct pix_t *array_pix = (struct pix_t *)malloc((num_of_pix)*sizeof(struct pix_t));
+    for(i=0;i<num_of_pix;){
+        for(h=0;h<img_height;h++){
+            for(w=0;w<img_width;w++){
+                if(dark_channel[img_width*h+w]==max_val){
+                    array_pix[i].h=h;
+                    array_pix[i].w=w;
+                    i++;
+                }
+                if(i==num_of_pix)
+                    break;
+            }
+            if(i==num_of_pix)
+                break;
+        }
+        if(i==num_of_pix)
+            break;
+        max_val--;
+    }
 
+    // find the airlight which has the hightest intensity in the input image
+    unsigned char* yuv_y = (unsigned char *)malloc(sizeof(unsigned char)*img_height*img_width);
+    unsigned char* yuv_u = (unsigned char *)malloc(sizeof(unsigned char)*img_height*img_width);
+    unsigned char* yuv_v = (unsigned char *)malloc(sizeof(unsigned char)*img_height*img_width);
+      // convert rgb to yuv
+      for(h=0;h<img_height;h++){
+          for(w=0;w<img_width;w++){
+              yuv_y[img_width*h+w]=(( 66*channels[0].data[img_width*h+w]+129*channels[1].data[img_width*h+w] +25*channels[2].data[img_width*h+w]+128)>>8)+16;
+              yuv_u[img_width*h+w]=((-38*channels[0].data[img_width*h+w] -74*channels[1].data[img_width*h+w]+112*channels[2].data[img_width*h+w]+128)>>8)+128;
+              yuv_v[img_width*h+w]=((112*channels[0].data[img_width*h+w] -94*channels[1].data[img_width*h+w] -18*channels[2].data[img_width*h+w]+128)>>8)+128;
+          }
+      }
+    int max_y=0;
+    struct pix_t pos;
+    for(i=0;i<num_of_pix;i++){
+        if ( max_y < yuv_y[img_width * array_pix[i].h + array_pix[i].w]){
+            pos=array_pix[i];
+            max_y=yuv_y[img_width*pos.h+pos.w];
+        }
+    }
+    unsigned char airlight_r = channels[0].data[img_width*pos.h+pos.w];
+    unsigned char airlight_g = channels[1].data[img_width*pos.h+pos.w];
+    unsigned char airlight_b = channels[2].data[img_width*pos.h+pos.w];
 
+    // compute the transmission map
+    double omega=0.95;
+    double min_r,min_g,min_b,min_t;
+    double *tmap = (double*)malloc(sizeof(double)*img_height*img_width);
+    for(h=0;h<img_height;h++){
+        for(w=0;w<img_width;w++){
+            min_r=255.0;
+            min_g=255.0;
+            min_b=255.0;
+            for(lh=-center.h;lh<=center.h;lh++){
+                for(lw=-center.w;lw<=center.w;lw++){
+                    if((lw+w)>=0&&(w+lw)<img_width-1&&(h+lh)>=0&&(h+lh)<img_height-1){
+                        min_r=MIN(min_r,(double)channels[0].data[img_width*(h+lh)+(w+lw)]/airlight_r);
+                        min_g=MIN(min_g,(double)channels[1].data[img_width*(h+lh)+(w+lw)]/airlight_g);
+                        min_b=MIN(min_b,(double)channels[2].data[img_width*(h+lh)+(w+lw)]/airlight_b);
+                    }
+                }
+            }
+            min_t=MIN(MIN(min_r,min_g),min_b);
+            tmap[img_width*h+w]=1-omega*min_t;
+        }
+    }
+
+    // compute the haze free image
+    double t0=0.01;
+    double r,g,b,t_;
+
+    unsigned char* output = (unsigned char*)malloc(sizeof(unsigned char)*img_height*img_width*3);
+
+    Mat dehaze_mat(img_height, img_width, CV_8UC3, output);
+
+    for(h=0;h<img_height;h++){
+        unsigned char *rowPtr = dehaze_mat.ptr<unsigned char>(h);
+        for(w=0;w<img_width;w++){
+            t_=MAX(tmap[img_width*h+w],t0);
+
+            r=(((double)channels[0].data[img_width*h+w]-airlight_r)/t_)+airlight_r;
+            g=(((double)channels[1].data[img_width*h+w]-airlight_g)/t_)+airlight_g;
+            b=(((double)channels[2].data[img_width*h+w]-airlight_b)/t_)+airlight_b;
+
+            rowPtr[w*3+0] = (unsigned char)MIN(MAX(r,0),255); // R
+            rowPtr[w*3+1] = (unsigned char)MIN(MAX(g,0),255); // G
+            rowPtr[w*3+2] = (unsigned char)MIN(MAX(b,0),255); // B
+        }
+    }
+
+#if DISPLAY
     Mat dark_channel_mat(img_height, img_width, CV_8UC1, dark_channel);
-    namedWindow("DarkChannel",WINDOW_AUTOSIZE);
+    namedWindow("DarkChannel", WINDOW_AUTOSIZE);
     imshow("DarkChannel", dark_channel_mat);
+
+    Mat tmap_mat(img_height, img_width, CV_64FC1, tmap);
+    namedWindow("TransmissionMap", WINDOW_AUTOSIZE);
+    imshow("TransmissionMap", tmap_mat);
+
+    namedWindow("Dehaze", WINDOW_AUTOSIZE);
+    imshow("Dehaze", dehaze_mat);
+
     waitKey(0);
+#endif
 
     cout << "Done!\n";
 

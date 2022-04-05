@@ -8,4 +8,9 @@ Ported from https://github.com/mshr-h/Image_Dehazing.
 
 I have simplified the data structure and put all necessary code in only 1 main file.
 
+**Instruction** 
++ Compile OpenCV for C/C++ project.
++ Update your actual path to OpenCV
++ Run `make` command
+
 Tested on Ubuntu-18.04, OpenCV-4.4.0.

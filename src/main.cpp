@@ -39,21 +39,6 @@ int main( int argc, char** argv )
 
     cv::split(image, channels); // split from BGR image to RGB channels
 
-/*  Verify pixel's position: OK
-    unsigned char *rowPtr = image.ptr<unsigned char>(0);
-    unsigned char *rowPtrR = channels[0].ptr<unsigned char>(0);
-    unsigned char *rowPtrG = channels[1].ptr<unsigned char>(0);
-    unsigned char *rowPtrB = channels[2].ptr<unsigned char>(0);
-
-    cout << to_string(rowPtr[0]) << " - " << to_string(rowPtrR[0]) << '\n';
-    cout << to_string(rowPtr[1]) << " - " << to_string(rowPtrG[0]) << '\n';
-    cout << to_string(rowPtr[2]) << " - " << to_string(rowPtrB[0]) << '\n';
-
-    cout << to_string(rowPtr[3]) << " - " << to_string(rowPtrR[1]) << '\n';
-    cout << to_string(rowPtr[4]) << " - " << to_string(rowPtrG[1]) << '\n';
-    cout << to_string(rowPtr[5]) << " - " << to_string(rowPtrB[1]) << '\n';
-*/
-
     unsigned char* dark_channel = (unsigned char *)malloc(sizeof(unsigned char)*img_height*img_width);
 
     int h=0, w=0;
@@ -151,6 +136,7 @@ int main( int argc, char** argv )
                     }
                 }
             }
+
             min_t=MIN(MIN(min_r,min_g),min_b);
             tmap[img_width*h+w]=1-omega*min_t;
         }
@@ -180,16 +166,19 @@ int main( int argc, char** argv )
     }
 
 #if DISPLAY
+    namedWindow("1-Input", WINDOW_AUTOSIZE);
+    imshow("1-Input", image);
+
     Mat dark_channel_mat(img_height, img_width, CV_8UC1, dark_channel);
-    namedWindow("DarkChannel", WINDOW_AUTOSIZE);
-    imshow("DarkChannel", dark_channel_mat);
+    namedWindow("2-DarkChannel", WINDOW_AUTOSIZE);
+    imshow("2-DarkChannel", dark_channel_mat);
 
     Mat tmap_mat(img_height, img_width, CV_64FC1, tmap);
-    namedWindow("TransmissionMap", WINDOW_AUTOSIZE);
-    imshow("TransmissionMap", tmap_mat);
+    namedWindow("3-TransmissionMap", WINDOW_AUTOSIZE);
+    imshow("3-TransmissionMap", tmap_mat);
 
-    namedWindow("Dehaze", WINDOW_AUTOSIZE);
-    imshow("Dehaze", dehaze_mat);
+    namedWindow("4-Dehaze", WINDOW_AUTOSIZE);
+    imshow("4-Dehaze", dehaze_mat);
 
     waitKey(0);
 #endif

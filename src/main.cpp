@@ -71,7 +71,7 @@ int main( int argc, char** argv )
     }
 
     // pick up the top p% brightest pixels in the dark channel
-    double p=0.1;
+    float p=0.1;
     int max_val=255;
     int num_of_pix=(int)((img_height)*(img_width)*p)/100;
     struct pix_t *array_pix = (struct pix_t *)malloc((num_of_pix)*sizeof(struct pix_t));
@@ -119,9 +119,9 @@ int main( int argc, char** argv )
     unsigned char airlight_b = channels[2].data[img_width*pos.h+pos.w];
 
     // compute the transmission map
-    double omega=0.95;
-    double min_r,min_g,min_b,min_t;
-    double *tmap = (double*)malloc(sizeof(double)*img_height*img_width);
+    float omega=0.95;
+    float min_r,min_g,min_b,min_t;
+    float *tmap = (float*)malloc(sizeof(float)*img_height*img_width);
     for(h=0;h<img_height;h++){
         for(w=0;w<img_width;w++){
             min_r=255.0;
@@ -130,9 +130,9 @@ int main( int argc, char** argv )
             for(lh=-center.h;lh<=center.h;lh++){
                 for(lw=-center.w;lw<=center.w;lw++){
                     if((lw+w)>=0&&(w+lw)<img_width-1&&(h+lh)>=0&&(h+lh)<img_height-1){
-                        min_r=MIN(min_r,(double)channels[0].data[img_width*(h+lh)+(w+lw)]/airlight_r);
-                        min_g=MIN(min_g,(double)channels[1].data[img_width*(h+lh)+(w+lw)]/airlight_g);
-                        min_b=MIN(min_b,(double)channels[2].data[img_width*(h+lh)+(w+lw)]/airlight_b);
+                        min_r=MIN(min_r,(float)channels[0].data[img_width*(h+lh)+(w+lw)]/airlight_r);
+                        min_g=MIN(min_g,(float)channels[1].data[img_width*(h+lh)+(w+lw)]/airlight_g);
+                        min_b=MIN(min_b,(float)channels[2].data[img_width*(h+lh)+(w+lw)]/airlight_b);
                     }
                 }
             }
@@ -143,11 +143,10 @@ int main( int argc, char** argv )
     }
 
     // compute the haze free image
-    double t0=0.01;
-    double r,g,b,t_;
+    float t0=0.01;
+    float r,g,b,t_;
 
     unsigned char* output = (unsigned char*)malloc(sizeof(unsigned char)*img_height*img_width*3);
-
     Mat dehaze_mat(img_height, img_width, CV_8UC3, output);
 
     for(h=0;h<img_height;h++){
@@ -155,9 +154,9 @@ int main( int argc, char** argv )
         for(w=0;w<img_width;w++){
             t_=MAX(tmap[img_width*h+w],t0);
 
-            r=(((double)channels[0].data[img_width*h+w]-airlight_r)/t_)+airlight_r;
-            g=(((double)channels[1].data[img_width*h+w]-airlight_g)/t_)+airlight_g;
-            b=(((double)channels[2].data[img_width*h+w]-airlight_b)/t_)+airlight_b;
+            r=(((float)channels[0].data[img_width*h+w]-airlight_r)/t_)+airlight_r;
+            g=(((float)channels[1].data[img_width*h+w]-airlight_g)/t_)+airlight_g;
+            b=(((float)channels[2].data[img_width*h+w]-airlight_b)/t_)+airlight_b;
 
             rowPtr[w*3+0] = (unsigned char)MIN(MAX(r,0),255); // R
             rowPtr[w*3+1] = (unsigned char)MIN(MAX(g,0),255); // G
@@ -173,7 +172,7 @@ int main( int argc, char** argv )
     namedWindow("2-DarkChannel", WINDOW_AUTOSIZE);
     imshow("2-DarkChannel", dark_channel_mat);
 
-    Mat tmap_mat(img_height, img_width, CV_64FC1, tmap);
+    Mat tmap_mat(img_height, img_width, CV_32FC1, tmap);
     namedWindow("3-TransmissionMap", WINDOW_AUTOSIZE);
     imshow("3-TransmissionMap", tmap_mat);
 

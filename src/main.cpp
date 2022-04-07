@@ -17,6 +17,8 @@ using namespace std::chrono;
 #define DRK_CH_WND_WT 5 //should be an odd number
 #define DRK_CH_WND_HT 5 //should be an odd number
 
+#define GD_FT_WND_SZ 75 // Guided Filter Window Size
+
 struct pix_t { int w; int h; };
 
 #define DISPLAY 1
@@ -44,7 +46,7 @@ int main( int argc, char** argv )
     unsigned char pix_r=0, pix_g=0, pix_b=0;
     unsigned char min_ri=255, min_gi=255, min_bi=255;
     int lh=0, lw=0;
-    
+
     struct pix_t center;
     center.h = DRK_CH_WND_HT/2;
     center.w = DRK_CH_WND_WT/2;
@@ -76,8 +78,6 @@ int main( int argc, char** argv )
     unsigned char* output = (unsigned char*)malloc(sizeof(unsigned char)*img_height*img_width*3);
     Mat dehaze_mat(img_height, img_width, CV_8UC3, output);
 
-    
-
     cv::split(image, channels); // split from BGR image to RGB channels
 
     // Begin: Pre-Processing
@@ -106,7 +106,7 @@ int main( int argc, char** argv )
             dark_channel[img_width*h+w] = MIN(MIN(min_ri,min_gi),min_bi);
         }
     }
-    
+
     // pick up the top p% brightest pixels in the dark channel
     for(i=0;i<num_of_pix;){
         for(h=0;h<img_height;h++){
@@ -126,7 +126,7 @@ int main( int argc, char** argv )
             break;
         max_val--;
     }
-    
+
     // convert rgb to yuv
     for(h=0;h<img_height;h++){
         for(w=0;w<img_width;w++){
@@ -146,7 +146,7 @@ int main( int argc, char** argv )
     airlight_r = channels[0].data[img_width*pos.h+pos.w];
     airlight_g = channels[1].data[img_width*pos.h+pos.w];
     airlight_b = channels[2].data[img_width*pos.h+pos.w];
-    
+
     // compute the transmission map
     for(h=0;h<img_height;h++){
         for(w=0;w<img_width;w++){
@@ -206,5 +206,15 @@ int main( int argc, char** argv )
 
     waitKey(0);
 #endif
+
+    // Cleanup
+    free(dark_channel);
+    free(array_pix);
+    free(yuv_y);
+    free(yuv_u);
+    free(yuv_v);
+    free(tmap);
+    free(output);
+
     return 0;
 }

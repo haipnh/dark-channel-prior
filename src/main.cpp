@@ -25,7 +25,7 @@ struct pix_t { int w; int h; };
 
 int main( int argc, char** argv )
 {
-    Mat image;
+    Mat image, norm_image;
     Mat channels[3];
 
     image = imread("images/1.png", IMREAD_UNCHANGED); // Read as BGR matrix, bit-depth: CV_8U
@@ -34,6 +34,7 @@ int main( int argc, char** argv )
         cout << "Could not open or find the image" << std::endl ;
         return -1;
     }
+    image.convertTo(norm_image, CV_32FC3, 1.0/255, 0);
 
     int img_width = image.size().width;
     int img_height = image.size().height;
@@ -80,6 +81,15 @@ int main( int argc, char** argv )
 
     cv::split(image, channels); // split from BGR image to RGB channels
 
+    // convert rgb to yuv
+    for(h=0;h<img_height;h++){
+        for(w=0;w<img_width;w++){
+            yuv_y[img_width*h+w]=(( 66*channels[0].data[img_width*h+w]+129*channels[1].data[img_width*h+w] +25*channels[2].data[img_width*h+w]+128)>>8)+16;
+            yuv_u[img_width*h+w]=((-38*channels[0].data[img_width*h+w] -74*channels[1].data[img_width*h+w]+112*channels[2].data[img_width*h+w]+128)>>8)+128;
+            yuv_v[img_width*h+w]=((112*channels[0].data[img_width*h+w] -94*channels[1].data[img_width*h+w] -18*channels[2].data[img_width*h+w]+128)>>8)+128;
+        }
+    }
+
     // Begin: Pre-Processing
     auto start = high_resolution_clock::now();
 
@@ -106,7 +116,6 @@ int main( int argc, char** argv )
             dark_channel[img_width*h+w] = MIN(MIN(min_ri,min_gi),min_bi);
         }
     }
-
     // pick up the top p% brightest pixels in the dark channel
     for(i=0;i<num_of_pix;){
         for(h=0;h<img_height;h++){
@@ -125,15 +134,6 @@ int main( int argc, char** argv )
         if(i==num_of_pix)
             break;
         max_val--;
-    }
-
-    // convert rgb to yuv
-    for(h=0;h<img_height;h++){
-        for(w=0;w<img_width;w++){
-            yuv_y[img_width*h+w]=(( 66*channels[0].data[img_width*h+w]+129*channels[1].data[img_width*h+w] +25*channels[2].data[img_width*h+w]+128)>>8)+16;
-            yuv_u[img_width*h+w]=((-38*channels[0].data[img_width*h+w] -74*channels[1].data[img_width*h+w]+112*channels[2].data[img_width*h+w]+128)>>8)+128;
-            yuv_v[img_width*h+w]=((112*channels[0].data[img_width*h+w] -94*channels[1].data[img_width*h+w] -18*channels[2].data[img_width*h+w]+128)>>8)+128;
-        }
     }
 
     // find the airlight which has the hightest intensity in the input image
@@ -183,6 +183,13 @@ int main( int argc, char** argv )
         }
     }
 
+    // guided filter
+    // INIT: guided filter
+    float epsilon = 0.001;
+    struct pix_t gd_ft_center;
+    gd_ft_center.h = GD_FT_WND_SZ/2;
+    gd_ft_center.w = GD_FT_WND_SZ/2;
+
     // End: Pre-Processing
     auto stop = high_resolution_clock::now();
     float duration = duration_cast<microseconds>(stop - start).count();
@@ -192,6 +199,9 @@ int main( int argc, char** argv )
 #if DISPLAY
     namedWindow("1-Input", WINDOW_AUTOSIZE);
     imshow("1-Input", image);
+
+    namedWindow("1-NormInput", WINDOW_AUTOSIZE);
+    imshow("1-NormInput", norm_image);
 
     Mat dark_channel_mat(img_height, img_width, CV_8UC1, dark_channel);
     namedWindow("2-DarkChannel", WINDOW_AUTOSIZE);

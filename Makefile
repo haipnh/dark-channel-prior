@@ -8,7 +8,7 @@ IDIR=$(OPENCV_INCLUDE_PATH)
 LDIR=$(OPENCV_LIB_PATH)
 CFLAGS=-I$(IDIR)
 LDFLAGS=-L$(LDIR)
-ODIR=obj
+ODIR=src
 
 LIBS=-lopencv_core -lopencv_imgcodecs -lopencv_highgui -lopencv_imgproc
 
@@ -20,7 +20,6 @@ OBJ = $(patsubst %,$(ODIR)/%,$(_OBJ))
 
 
 $(ODIR)/%.o: src/%.cpp $(DEPS)
-	mkdir obj
 	$(CC) -c -o $@ $< $(CFLAGS)
 
 main: $(OBJ)
@@ -29,4 +28,4 @@ main: $(OBJ)
 .PHONY: clean
 
 clean:
-	rm -rf $(ODIR) main
+	rm -f src/*.o main

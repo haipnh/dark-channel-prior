@@ -76,10 +76,12 @@ int main( int argc, char** argv )
     unsigned char* output = (unsigned char*)malloc(sizeof(unsigned char)*img_height*img_width*3);
     Mat dehaze_mat(img_height, img_width, CV_8UC3, output);
 
-    // Begin: Pre-Processing
-    auto start = high_resolution_clock::now();
+    
 
     cv::split(image, channels); // split from BGR image to RGB channels
+
+    // Begin: Pre-Processing
+    auto start = high_resolution_clock::now();
 
     // calculate dark channel
     for(int h = 0; h < image.rows; h++)
@@ -125,25 +127,26 @@ int main( int argc, char** argv )
         max_val--;
     }
     
+    // convert rgb to yuv
+    for(h=0;h<img_height;h++){
+        for(w=0;w<img_width;w++){
+            yuv_y[img_width*h+w]=(( 66*channels[0].data[img_width*h+w]+129*channels[1].data[img_width*h+w] +25*channels[2].data[img_width*h+w]+128)>>8)+16;
+            yuv_u[img_width*h+w]=((-38*channels[0].data[img_width*h+w] -74*channels[1].data[img_width*h+w]+112*channels[2].data[img_width*h+w]+128)>>8)+128;
+            yuv_v[img_width*h+w]=((112*channels[0].data[img_width*h+w] -94*channels[1].data[img_width*h+w] -18*channels[2].data[img_width*h+w]+128)>>8)+128;
+        }
+    }
+
     // find the airlight which has the hightest intensity in the input image
-    airlight_r = channels[0].data[img_width*pos.h+pos.w];
-    airlight_g = channels[1].data[img_width*pos.h+pos.w];
-    airlight_b = channels[2].data[img_width*pos.h+pos.w];
-      // convert rgb to yuv
-      for(h=0;h<img_height;h++){
-          for(w=0;w<img_width;w++){
-              yuv_y[img_width*h+w]=(( 66*channels[0].data[img_width*h+w]+129*channels[1].data[img_width*h+w] +25*channels[2].data[img_width*h+w]+128)>>8)+16;
-              yuv_u[img_width*h+w]=((-38*channels[0].data[img_width*h+w] -74*channels[1].data[img_width*h+w]+112*channels[2].data[img_width*h+w]+128)>>8)+128;
-              yuv_v[img_width*h+w]=((112*channels[0].data[img_width*h+w] -94*channels[1].data[img_width*h+w] -18*channels[2].data[img_width*h+w]+128)>>8)+128;
-          }
-      }
     for(i=0;i<num_of_pix;i++){
         if ( max_y < yuv_y[img_width * array_pix[i].h + array_pix[i].w]){
             pos=array_pix[i];
             max_y=yuv_y[img_width*pos.h+pos.w];
         }
     }
-    cout << "Checkpoint\n";
+    airlight_r = channels[0].data[img_width*pos.h+pos.w];
+    airlight_g = channels[1].data[img_width*pos.h+pos.w];
+    airlight_b = channels[2].data[img_width*pos.h+pos.w];
+    
     // compute the transmission map
     for(h=0;h<img_height;h++){
         for(w=0;w<img_width;w++){
@@ -182,9 +185,9 @@ int main( int argc, char** argv )
 
     // End: Pre-Processing
     auto stop = high_resolution_clock::now();
-    auto duration = duration_cast<microseconds>(stop - start);
-    cout << "Processing time: " << duration.count() << " us." << endl;
-    cout << "Expected       : 16667 us." << endl;
+    float duration = duration_cast<microseconds>(stop - start).count();
+    cout << "Processing time: " << to_string(duration) << " us ~ " << to_string(1/(duration/1000000)) << " FPS" << endl;
+    cout << "Expected       : 16667 us ~ 60 FPS" << endl;
 
 #if DISPLAY
     namedWindow("1-Input", WINDOW_AUTOSIZE);
